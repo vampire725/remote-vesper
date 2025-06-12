@@ -1,0 +1,102 @@
+groups:
+  - name: opentelemetry.rules
+    interval: 30s
+    rules:
+      # OTel Collector 告警规则
+      - alert: OTelCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: otel-collector
+        annotations:
+          summary: "OpenTelemetry Collector is down"
+          description: "OpenTelemetry Collector has been down for more than 1 minute."
+
+      - alert: OTelCollectorHighMemoryUsage
+        expr: rate(otelcol_process_memory_rss[5m]) > 500000000  # 500MB
+        for: 5m
+        labels:
+          severity: warning
+          service: otel-collector
+        annotations:
+          summary: "OTel Collector high memory usage"
+          description: "OTel Collector memory usage is above 500MB for 5 minutes."
+
+      - alert: OTelCollectorHighSpanDropRate
+        expr: rate(otelcol_processor_dropped_spans_total[5m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: otel-collector
+        annotations:
+          summary: "High span drop rate in OTel Collector"
+          description: "OTel Collector is dropping more than 100 spans per second."
+
+      # Tempo 告警规则
+      - alert: TempoDown
+        expr: up{job="tempo"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: tempo
+        annotations:
+          summary: "Tempo is down"
+          description: "Tempo has been down for more than 1 minute."
+
+      - alert: TempoHighIngestionLatency
+        expr: histogram_quantile(0.99, rate(tempo_distributor_spans_received_total[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: tempo
+        annotations:
+          summary: "Tempo high ingestion latency"
+          description: "99th percentile ingestion latency is above 1000ms."
+
+      # Grafana 告警规则
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: grafana
+        annotations:
+          summary: "Grafana is down"
+          description: "Grafana has been down for more than 2 minutes."
+
+      # 系统级告警
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(otelcol_exporter_send_failed_spans_total[5m])) /
+            sum(rate(otelcol_exporter_sent_spans_total[5m]))
+          ) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          service: observability
+        annotations:
+          summary: "High error rate in observability pipeline"
+          description: "More than 10% of spans are failing to be exported."
+
+  - name: performance.rules
+    interval: 60s
+    rules:
+      # 记录规则 - 预计算常用指标
+      - record: otel:span_rate_5m
+        expr: rate(otelcol_receiver_accepted_spans_total[5m])
+        labels:
+          job: otel-collector
+
+      - record: otel:export_success_rate_5m
+        expr: |
+          (
+            rate(otelcol_exporter_sent_spans_total[5m]) /
+            (rate(otelcol_exporter_sent_spans_total[5m]) + rate(otelcol_exporter_send_failed_spans_total[5m]))
+          )
+
+      - record: tempo:ingestion_rate_5m
+        expr: rate(tempo_distributor_spans_received_total[5m])
+        labels:
+          job: tempo 

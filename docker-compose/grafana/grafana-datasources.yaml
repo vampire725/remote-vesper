@@ -1,0 +1,103 @@
+apiVersion: 1
+
+datasources:
+  # Tempo数据源 - 分布式追踪
+  - name: Tempo
+    type: tempo
+    access: proxy
+    orgId: 1
+    url: http://tempo:3200
+    basicAuth: false
+    isDefault: true
+    version: 1
+    editable: true
+    apiVersion: 1
+    uid: tempo
+    jsonData:
+      tracesToLogs:
+        datasourceUid: 'elasticsearch'
+        spanIdField: "spanID"
+        tags: ['traceID']
+        spanStartTimeShift: '-1m'
+        spanEndTimeShift: '1m'
+        filterBySpanID: true
+        customQuery: true
+        query: |
+          {
+            "query": {
+              "bool": {
+                "must": [
+                  {"term": {"spanID": "${__span.spanId}"}},
+                  {"term": {"traceID": "${__span.traceId}"}}
+                ]
+              }
+            }
+          }
+      httpMethod: GET
+      serviceMap:
+        datasourceUid: prometheus
+      search:
+        hide: false
+      nodeGraph:
+        enabled: true
+      traceQuery:
+        timeShiftEnabled: true
+        spanStartTimeShift: '1h'
+        spanEndTimeShift: '1h'
+      lokiSearch:
+        datasourceUid: loki
+
+  # Prometheus数据源 - 指标数据
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: http://prometheus:9090
+    basicAuth: false
+    isDefault: false
+    version: 1
+    editable: true
+    apiVersion: 1
+    uid: prometheus
+    jsonData:
+      httpMethod: POST
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+        - name: traceID
+          datasourceUid: tempo
+
+  # OTel Collector Metrics
+  - name: OTel-Collector
+    type: prometheus
+    access: proxy
+    orgId: 1
+    url: http://otel-collector:8889
+    basicAuth: false
+    isDefault: false
+    version: 1
+    editable: true
+    apiVersion: 1
+    uid: otel-collector
+    jsonData:
+      httpMethod: GET
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+  - name: Elasticsearch
+    type: elasticsearch
+    uid: elasticsearch
+    url: http://elasticsearch:9200
+    jsonData:
+      timeField: '@timestamp'
+      index: "app-logs-*"
+      logMessageField: "message"
+      logLevelField: "level.keyword"
+      spanIdField: "spanID"
+      traceIdField: "traceID"
+      dataLinks:
+        - title: "View Trace in Grafana"
+          url: '$${__value.raw}'
+          datasourceUid: 'tempo'
+          datasourceName: 'Tempo'
+          field: "traceID"

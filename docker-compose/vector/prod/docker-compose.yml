@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  vector1:
+    image: timberio/vector:0.34.0-debian
+    container_name: vector1
+    ports:
+      - "8686:8686"  # Vector 内部指标端口
+    volumes:
+      - ./vector1.yaml:/etc/vector/vector.yaml:ro
+      - /var/log:/var/log:ro  # 挂载日志目录
+    environment:
+      VECTOR_CONFIG: /etc/vector/vector.yaml
+    healthcheck:
+      test: ["CMD", "vector", "validate", "--config-yaml", "/etc/vector/vector.yaml"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - vector
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+  vector2:
+    image: timberio/vector:0.34.0-debian
+    container_name: vector2
+    ports:
+      - "8687:8686"  # Vector 内部指标端口
+    volumes:
+      - ./vector2.yaml:/etc/vector/vector.yaml:ro
+      - /var/log:/var/log:ro  # 挂载日志目录
+    environment:
+      VECTOR_CONFIG: /etc/vector/vector.yaml
+    healthcheck:
+      test: ["CMD", "vector", "validate", "--config-yaml", "/etc/vector/vector.yaml"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - vector
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+
+networks:
+  vector:
+    name: vector
+    driver: bridge 

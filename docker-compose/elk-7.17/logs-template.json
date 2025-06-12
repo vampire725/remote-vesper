@@ -1,0 +1,41 @@
+{
+  "index_patterns": ["app-logs-*"],
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1,
+    "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "dynamic": true,
+    "dynamic_templates": [
+      {
+        "strings_as_keywords": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      }
+    ],
+    "properties": {
+      "@timestamp": {
+        "type": "date"
+      },
+      "level": {
+        "type": "keyword"
+      },
+      "traceID": {
+        "type": "keyword"
+      },
+      "spanID": {
+        "type": "keyword"
+      },
+      "service_name": {
+        "type": "keyword"
+      },
+      "spanName": {
+        "type": "keyword"
+      }
+    }
+  }
+}

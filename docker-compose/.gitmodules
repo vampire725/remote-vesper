@@ -1,0 +1,3 @@
+[submodule "tempo-deploy"]
+	path = tempo-deploy
+	url = http://gitlab.gainetics.io/backend-som/observable/tempo-deploy.git

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.12.1
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/var/logs:ro
+      - /proc:/hostfs/proc:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /var/run/dbus:/hostfs/var/run/dbus:ro
+    environment:
+      - KAFKA_HOSTS=kafka:9092
+      - KAFKA_TOPIC=filebeat-logs
+      - KAFKA_USERNAME=your_username
+      - KAFKA_PASSWORD=your_password
+    networks:
+      - logging-network
+      - kafka
+    restart: unless-stopped
+
+networks:
+  kafka:
+    external: true
+  logging-network:
+    external: true

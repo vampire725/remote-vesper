@@ -1,0 +1,38 @@
+data_dir: /var/lib/vector
+
+sources:
+  file_logs:
+    type: file
+    include:
+      - /var/log/*.log
+    read_from: beginning
+    ignore_older: 86400  # 忽略24小时前的日志
+    fingerprinting:
+      strategy: device_and_inode
+
+transforms:
+  parse_logs:
+    type: remap
+    inputs: ["file_logs"]
+    source: |
+      . = parse_json!(.message) ?? .message
+      .timestamp = now()
+      .vector_instance = "vector2"
+      .host = hostname()
+
+sinks:
+  elasticsearch:
+    type: elasticsearch
+    inputs: ["parse_logs"]
+    endpoint: http://elasticsearch:9200
+    index: "vector-logs-%Y-%m-%d"
+    bulk:
+      action: create
+    encoding:
+      codec: json
+    compression: gzip
+    retry:
+      max_retries: 5
+      initial_backoff_secs: 1
+      max_backoff_secs: 10
+      multiplier: 2 

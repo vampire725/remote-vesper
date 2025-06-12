@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  vector:
+    image: harbor.gainetics.io/observable/vector:0.35.0
+    container_name: vector
+    ports:
+      - "8686:8686"  # Vector 内部指标端口
+    volumes:
+      - ./vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/log:/var/log:ro  # 挂载日志目录
+    environment:
+      VECTOR_CONFIG: /etc/vector/vector.yaml
+    healthcheck:
+      test: ["CMD-SHELL", "vector validate --config-yaml /etc/vector/vector.yaml && curl -f http://localhost:8686/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vector
+
+networks:
+  vector:
+    name: vector
+    driver: bridge 

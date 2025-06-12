@@ -1,0 +1,4 @@
+./gateway: ./gateway: cannot execute binary file
+./backservice: ./backservice: cannot execute binary file
+2025/06/12 01:05:00 Backend service starting on :8081
+2025/06/12 01:05:09 API Gateway starting on :8080

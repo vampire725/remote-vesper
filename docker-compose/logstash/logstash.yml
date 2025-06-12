@@ -1,0 +1,11 @@
+http.host: "0.0.0.0"
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.hosts: ["${ELASTICSEARCH_HOSTS}"]
+xpack.monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
+xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+xpack.monitoring.elasticsearch.ssl.enabled: true
+xpack.monitoring.elasticsearch.ssl.certificate_authority: "/usr/share/logstash/certs/ca.crt"
+
+path.config: /usr/share/logstash/pipeline
+path.logs: /var/log/logstash
+log.level: info 
