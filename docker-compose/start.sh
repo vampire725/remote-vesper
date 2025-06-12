@@ -28,6 +28,18 @@ deploy_compose_files() {
     done
 }
 
+
+# 创建Docker网络（幂等操作）
+networks=("monitoring-network" "tracing-network" "logging-network" "kafka" "nacos")
+for network in "${networks[@]}"; do
+    if docker network inspect "$network" &>/dev/null; then
+        echo "网络已存在: $network"
+    else
+        docker network create "$network"
+        echo "已创建网络: $network"
+    fi
+done
+
 # 主循环，处理所有目标目录
 for dir in "${TARGET_DIRS[@]}"; do
     if [ -d "$dir" ]; then
