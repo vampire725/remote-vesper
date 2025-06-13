@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
 	"trace-demo/common"
@@ -14,26 +15,12 @@ import (
 	"go.uber.org/zap"
 )
 
-//var tracer trace.Tracer
-
-//func init() {
-//    tracer = otel.Tracer("backend-service")
-//}
-
 func main() {
-	//cleanup := InitTracer("backend-service")
-	//defer cleanup()
-	//
-	//http.HandleFunc("/process", processHandler)
-	//log.Println("Backend service starting on :8081")
-	//log.Fatal(http.ListenAndServe(":8081", nil))
-
-	common.InitLogger() // 初始化日志
-
+	common.InitLogger()
 	cleanup := common.InitTracer("backend-service")
 	defer cleanup()
 
-	// 添加日志中间件
+	// 统一使用 /process 路径
 	http.Handle("/process", common.LoggingMiddleware(
 		http.HandlerFunc(processHandler),
 	))
@@ -44,9 +31,19 @@ func main() {
 
 func processHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	logger := common.GetLogger(ctx)
 
-	spanCtx, span := common.Tracer.Start(ctx, "process-data")
+	// 创建服务端span (仅在此处创建)
+	ctx, span := common.Tracer.Start(
+		ctx,
+		"process-request",
+		trace.WithSpanKind(trace.SpanKindServer),
+	)
 	defer span.End()
+
+	// 添加HTTP属性
+	span.SetAttributes(attribute.String("http.method", r.Method))
+	span.SetAttributes(attribute.String("http.route", "/process"))
 
 	// 模拟处理时间
 	time.Sleep(100 * time.Millisecond)
@@ -56,20 +53,29 @@ func processHandler(w http.ResponseWriter, r *http.Request) {
 		"time":   time.Now().Format(time.RFC3339),
 	}
 
-	processBusinessLogic(spanCtx)
+	logger.Debug("开始处理后端服务",
+		zap.String("step", "data_start"))
+
+	// 处理业务逻辑 - 传递上下文
+	processBusinessLogic(ctx)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
+	// 记录响应状态
+	span.SetAttributes(attribute.Int("http.status_code", http.StatusOK))
 }
 
 func processBusinessLogic(ctx context.Context) {
-
 	logger := common.GetLogger(ctx)
-	// 后端服务处理请求时
-	_, span := common.Tracer.Start(ctx, "process-data", trace.WithSpanKind(trace.SpanKindServer))
+
+	// 创建内部span (不设置SpanKind，默认为Internal)
+	_, span := common.Tracer.Start(ctx, "business-logic")
 	defer span.End()
 
-	// 业务日志示例
+	// 添加业务属性
+	span.SetAttributes(attribute.String("processing.stage", "validation"))
+
 	logger.Debug("Processing business logic",
 		zap.String("step", "data_validation"))
 
@@ -77,4 +83,7 @@ func processBusinessLogic(ctx context.Context) {
 
 	logger.Info("Business logic completed",
 		zap.Int("items_processed", 42))
+
+	// 添加完成属性
+	span.SetAttributes(attribute.Int("items.processed", 42))
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -14,15 +15,7 @@ import (
 )
 
 func main() {
-	//cleanup := InitTracer("api-gateway")
-	//defer cleanup()
-	//
-	//http.HandleFunc("/api/data", handleRequest)
-	//log.Println("API Gateway starting on :8080")
-	//log.Fatal(http.ListenAndServe(":8080", nil))
-
-	common.InitLogger() // 初始化日志
-
+	common.InitLogger()
 	cleanup := common.InitTracer("api-gateway")
 	defer cleanup()
 
@@ -37,47 +30,71 @@ func main() {
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := common.GetLogger(ctx) // 获取上下文日志器traceID
+	logger := common.GetLogger(ctx)
 
-	// 示例日志输出
-	logger.Info("Handling API request",
-		zap.String("userAgent", r.UserAgent()))
-
-	//ctx := r.Context()
-
-	spanCtx, span := common.Tracer.Start(ctx, "handle-request")
+	// 创建根span
+	ctx, span := common.Tracer.Start(ctx, "handle-request")
 	defer span.End()
 
-	// 调用后端服务
-	backendResp, err := callBackendService(spanCtx)
+	// 示例日志输出
+	logger.Info("开始处理 API 请求",
+		zap.String("userAgent", r.UserAgent()),
+		zap.String("path", r.URL.Path))
+
+	// 添加HTTP属性
+	span.SetAttributes(attribute.String("http.method", r.Method))
+	span.SetAttributes(attribute.String("http.route", "/api/data"))
+
+	// 调用后端服务 - 使用正确的上下文
+	backendResp, err := callBackendService(ctx)
 	if err != nil {
 		http.Error(w, "Backend service error", http.StatusInternalServerError)
 		span.RecordError(err)
+		logger.Error("Backend call failed", zap.Error(err))
 		return
 	}
+
+	// 示例日志输出
+	logger.Info("API 请求结束",
+		zap.String("userAgent", r.UserAgent()),
+		zap.String("path", r.URL.Path))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(backendResp)
 }
 
 func callBackendService(ctx context.Context) ([]byte, error) {
-	//spanCtx, span := common.Tracer.Start(ctx, "call-backend")
-	//defer span.End()
-	// API 网关调用后端服务时
-	spanCtx, span := common.Tracer.Start(ctx, "call-backend", trace.WithSpanKind(trace.SpanKindClient))
+	// 创建客户端span
+	ctx, span := common.Tracer.Start(
+		ctx,
+		"call-backend",
+		trace.WithSpanKind(trace.SpanKindClient),
+	)
 	defer span.End()
 
-	req, err := http.NewRequestWithContext(spanCtx, "GET", "http://localhost:8081/process", nil)
+	// 添加HTTP调用属性
+	span.SetAttributes(attribute.String("http.method", "GET"))
+	span.SetAttributes(attribute.String("http.url", "http://localhost:8081/process"))
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8081/process", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+		// 添加追踪拦截器
+		Transport: common.NewTraceTransport(http.DefaultTransport),
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	// 记录响应状态
+	span.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
 
 	return io.ReadAll(resp.Body)
 }

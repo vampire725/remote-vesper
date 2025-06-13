@@ -17,8 +17,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/backservice /app/back
 
 
 # 构建 macOS 版本
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/gateway-linux /app/api-gateway
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/backservice-linux /app/backend-service
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/gateway-mac /app/api-gateway
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/backservice-mac /app/backend-service
 
 RUN #CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /app/myapp-macos-arm64
 
