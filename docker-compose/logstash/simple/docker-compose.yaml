@@ -11,7 +11,7 @@ services:
 
     # 端口映射
     ports:
-      - "9600:9600" # HTTP API端口（用于监控和管理）
+      - "19600:9600" # HTTP API端口（用于监控和管理）
 
     # 环境变量配置
     environment:
