@@ -1,0 +1,51 @@
+# Tempo 基础配置文件
+# 这是一个简化的 Tempo 配置，适用于开发和测试环境
+# 不包含指标生成器，专注于基本的追踪数据收集和查询功能
+
+# 服务器配置
+server:
+  http_listen_port: 3200 # HTTP API 监听端口，用于查询接口和健康检查
+
+# 分发器配置 - 负责接收来自客户端的追踪数据
+distributor:
+  receivers: # 配置支持的协议接收器
+    otlp: # OpenTelemetry 协议支持
+      protocols:
+        grpc: # gRPC 协议配置
+          endpoint: 0.0.0.0:4317 # 监听所有网络接口的4317端口
+        http: # HTTP 协议配置
+          endpoint: 0.0.0.0:4318 # 监听所有网络接口的4318端口
+
+# 摄取器配置 - 负责将接收到的追踪数据写入存储
+ingester:
+  max_block_duration: 5m # 最大块持续时间，5分钟后强制刷盘
+  max_block_bytes: 1_000_000 # 最大块大小（1MB），达到后刷盘以控制内存使用
+
+# 压缩器配置 - 负责后台数据压缩和清理任务
+compactor:
+  compaction: # 压缩策略配置
+    compaction_window: 1h # 压缩窗口，每小时执行一次压缩操作
+    max_block_bytes: 100_000_000 # 压缩后的最大块大小（100MB）
+    block_retention: 24h # 原始数据块保留时间（24小时）
+    compacted_block_retention: 1h # 压缩后数据块保留时间（1小时）
+
+# 存储配置 - 定义追踪数据的存储方式和位置
+storage:
+  trace: # 追踪数据存储配置
+    backend: local # 存储后端类型：local（本地文件系统）
+    wal: # 预写日志（Write-Ahead Log）配置
+      path: /tmp/tempo/wal # WAL 文件存储路径，用于数据持久化
+    local: # 本地存储配置
+      path: /tmp/tempo/blocks # 数据块文件存储路径
+
+# 查询前端配置 - 负责查询请求的处理和优化
+query_frontend:
+  search: # 搜索功能配置
+    duration_slo: 5s # 搜索操作的服务级别目标（SLO），超时时间5秒
+    throughput_bytes_slo: 1.073741824e+09 # 吞吐量SLO（1GB），限制查询数据量
+  trace_by_id: # 按追踪ID查询的配置
+    duration_slo: 5s # 按ID查询的超时时间（5秒）
+
+# 查询器配置 - 执行实际的数据查询操作
+querier:
+  max_concurrent_queries: 5 # 最大并发查询数，限制同时执行的查询请求数量

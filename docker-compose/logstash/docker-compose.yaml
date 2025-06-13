@@ -1,35 +1,74 @@
-version: '3.8'
+# ===========================================
+# Logstash Docker Compose 配置文件
+# 文件名: docker-compose.yaml
+# 功能: 定义 Logstash 服务的容器化部署
+# 版本: Logstash 9.0.2
+# ===========================================
+
+# Docker Compose 配置文件版本
+version: "3.8"
 
 services:
   logstash:
-    image: docker.elastic.co/logstash/logstash:8.12.1
+    # 使用官方 Logstash 9.0.2 镜像（最新稳定版本）
+    image: docker.elastic.co/logstash/logstash:9.0.2
+    # 容器名称
     container_name: logstash
-    volumes:
-      - ./logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
-      - ./pipeline:/usr/share/logstash/pipeline:ro
-      - ./certs:/usr/share/logstash/certs:ro
-    environment:
-      - ELASTICSEARCH_HOSTS=https://es01:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=your_password
-      - KAFKA_HOSTS=kafka:9092
-      - KAFKA_TOPIC=filebeat-logs
-      - KAFKA_USERNAME=your_username
-      - KAFKA_PASSWORD=your_password
-      - LS_JAVA_OPTS=-Xms1g -Xmx1g
-    networks:
-      - logging-network
-      - kafka
-    restart: unless-stopped
-    healthcheck:
-      test: curl -f http://localhost:9600 || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
+    # 挂载配置文件和目录
+    volumes:
+      # 主配置文件（只读）
+      - ./logs-template.json:/usr/share/logstash/templates/logs-template.json
+      - ./logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      # 管道配置文件（只读）
+      - ./pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      # 管道处理规则目录（只读）
+      - ./pipeline:/usr/share/logstash/pipeline:ro
+      # SSL证书目录（只读）
+#      - ./certs:/usr/share/logstash/certs:ro
+
+    # 环境变量配置
+    environment:
+      # Elasticsearch 连接配置
+      - ELASTICSEARCH_HOSTS=http://es01:9200
+#      - ELASTICSEARCH_USERNAME=elastic
+#      - ELASTICSEARCH_PASSWORD=your_password
+
+      # Kafka 连接配置
+      - KAFKA_HOSTS=kafka:9092
+      - KAFKA_TOPIC=app-logs
+#      - KAFKA_USERNAME=your_username
+#      - KAFKA_PASSWORD=your_password
+
+      # JVM 内存配置（堆内存设置为1GB）
+      - LS_JAVA_OPTS=-Xms1g -Xmx1g
+
+    # 网络配置
+    networks:
+      - logging-network # 日志处理网络
+      - kafka # Kafka 网络
+
+    # 重启策略：除非手动停止，否则总是重启
+    restart: unless-stopped
+
+    # 健康检查配置
+    healthcheck:
+      # 检查命令：访问 Logstash API 端点
+      test: ["CMD", "curl", "-f", "http://localhost:9600"]
+      # 检查间隔：每30秒检查一次
+      interval: 30s
+      # 超时时间：10秒
+      timeout: 10s
+      # 重试次数：5次
+      retries: 5
+      # 启动等待时间：40秒（给 Logstash 足够的启动时间）
+      start_period: 40s
+
+# 网络配置
 networks:
+  # 外部日志处理网络
   logging-network:
     external: true
+  # 外部 Kafka 网络
   kafka:
     external: true

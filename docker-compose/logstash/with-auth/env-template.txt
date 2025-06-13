@@ -1,0 +1,98 @@
+# Logstash 企业级部署环境变量配置
+# 复制此文件为 .env 并设置实际的密码值
+
+# ================================
+# Elasticsearch 认证配置
+# ================================
+
+# Elasticsearch 超级用户密码（必须设置）
+ELASTIC_PASSWORD=your_elastic_password_here
+
+# Elasticsearch 用户名（默认为 elastic）
+ELASTIC_USERNAME=elastic
+
+# Kibana 系统用户密码
+KIBANA_PASSWORD=your_kibana_password_here
+
+# ================================
+# Logstash 安全配置
+# ================================
+
+# Logstash 密钥库密码
+LOGSTASH_KEYSTORE_PASS=your_logstash_keystore_password_here
+
+# ================================
+# Kibana 安全配置
+# ================================
+
+# Kibana 加密密钥（32字符随机字符串）
+KIBANA_ENCRYPTION_KEY=your_32_character_encryption_key_here
+
+# ================================
+# SSL/TLS 证书配置
+# ================================
+
+# CA 证书密码（如果使用密码保护的CA）
+CA_PASSWORD=your_ca_password_here
+
+# 证书有效期（天）
+CERT_VALIDITY_DAYS=365
+
+# ================================
+# 网络和端口配置
+# ================================
+
+# Elasticsearch HTTP 端口
+ELASTICSEARCH_PORT=9200
+
+# Kibana 端口
+KIBANA_PORT=5601
+
+# Logstash API 端口
+LOGSTASH_API_PORT=9600
+
+# Logstash Beats 输入端口
+LOGSTASH_BEATS_PORT=5044
+
+# ================================
+# 性能和资源配置
+# ================================
+
+# Elasticsearch JVM 堆内存
+ES_JAVA_OPTS=-Xmx1g -Xms1g
+
+# Logstash JVM 堆内存
+LS_JAVA_OPTS=-Xmx2g -Xms2g
+
+# ================================
+# 监控配置
+# ================================
+
+# 启用 X-Pack 监控
+XPACK_MONITORING_ENABLED=true
+
+# 监控数据保留期（天）
+MONITORING_RETENTION_DAYS=7
+
+# ================================
+# 安全建议
+# ================================
+
+# 1. 使用强密码（至少12个字符，包含大小写字母、数字和特殊字符）
+# 2. 定期更换密码
+# 3. 不要在版本控制中提交 .env 文件
+# 4. 限制 .env 文件的访问权限（chmod 600 .env）
+# 5. 在生产环境中使用外部密钥管理系统
+
+# ================================
+# 示例密码生成命令
+# ================================
+
+# 生成随机密码：
+# openssl rand -base64 32
+
+# 生成 Kibana 加密密钥：
+# openssl rand -hex 32
+
+# 生成强密码：
+# pwgen -s 32 1 

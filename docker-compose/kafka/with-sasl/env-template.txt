@@ -1,0 +1,103 @@
+# Kafka SASL 认证环境变量配置模板
+# 复制此文件为 .env 并修改相应的密码
+
+# ===========================================
+# 管理员账户配置
+# ===========================================
+KAFKA_ADMIN_USER=admin
+KAFKA_ADMIN_PASSWORD=admin-secret
+
+# ===========================================
+# 应用用户账户配置
+# ===========================================
+KAFKA_USER_USERNAME=kafkauser
+KAFKA_USER_PASSWORD=user-secret
+
+# 生产者账户
+KAFKA_PRODUCER_USERNAME=producer
+KAFKA_PRODUCER_PASSWORD=producer-secret
+
+# 消费者账户
+KAFKA_CONSUMER_USERNAME=consumer
+KAFKA_CONSUMER_PASSWORD=consumer-secret
+
+# ===========================================
+# Zookeeper 配置
+# ===========================================
+ZOOKEEPER_ADMIN_USER=admin
+ZOOKEEPER_ADMIN_PASSWORD=admin-secret
+
+# ===========================================
+# Schema Registry 配置
+# ===========================================
+SCHEMA_REGISTRY_USER=schema-registry
+SCHEMA_REGISTRY_PASSWORD=registry-secret
+
+# ===========================================
+# Kafka Connect 配置
+# ===========================================
+CONNECT_USER=connect
+CONNECT_PASSWORD=connect-secret
+
+# ===========================================
+# 安全配置
+# ===========================================
+# SASL 机制 (SCRAM-SHA-256, SCRAM-SHA-512, PLAIN)
+SASL_MECHANISM=SCRAM-SHA-256
+
+# 安全协议 (SASL_PLAINTEXT, SASL_SSL)
+SECURITY_PROTOCOL=SASL_PLAINTEXT
+
+# ===========================================
+# 网络配置
+# ===========================================
+KAFKA_EXTERNAL_PORT=9093
+KAFKA_UI_PORT=8080
+SCHEMA_REGISTRY_PORT=8081
+KAFKA_CONNECT_PORT=8083
+
+# ===========================================
+# JVM 配置
+# ===========================================
+KAFKA_HEAP_OPTS=-Xmx2G -Xms2G
+ZOOKEEPER_HEAP_OPTS=-Xmx1G -Xms1G
+
+# ===========================================
+# 日志配置
+# ===========================================
+KAFKA_LOG_RETENTION_HOURS=168
+KAFKA_LOG_RETENTION_BYTES=1073741824
+
+# ===========================================
+# 集群配置
+# ===========================================
+KAFKA_BROKER_ID=1
+KAFKA_NUM_PARTITIONS=3
+KAFKA_DEFAULT_REPLICATION_FACTOR=1
+KAFKA_MIN_INSYNC_REPLICAS=1
+
+# ===========================================
+# 安全注意事项
+# ===========================================
+# 1. 请修改所有默认密码
+# 2. 在生产环境中使用强密码
+# 3. 定期轮换密码
+# 4. 限制网络访问
+# 5. 启用审计日志
+
+# ===========================================
+# 密码要求
+# ===========================================
+# - 最少8个字符
+# - 包含大小写字母
+# - 包含数字
+# - 包含特殊字符
+# - 避免使用常见密码
+
+# ===========================================
+# 示例强密码
+# ===========================================
+# KAFKA_ADMIN_PASSWORD=K@fka2024!Admin
+# KAFKA_USER_PASSWORD=Us3r$ecur3P@ss
+# KAFKA_PRODUCER_PASSWORD=Pr0duc3r#2024
+# KAFKA_CONSUMER_PASSWORD=C0nsum3r&S@fe 

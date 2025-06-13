@@ -1,0 +1,312 @@
+# ===========================================
+# Elasticsearch SSL 安全部署配置文件
+# 文件名: docker-compose.yaml
+# 功能: 带SSL加密和认证的 Elasticsearch 部署
+# 版本: Elasticsearch 8.15.3
+# 用途: 生产环境或安全要求较高的环境
+# ===========================================
+
+# Docker Compose 配置文件版本
+version: "3.8"
+
+services:
+  # ===========================================
+  # 证书生成服务（一次性运行）
+  # ===========================================
+  setup:
+    # 使用官方 Elasticsearch 镜像生成证书
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    # 容器名称
+    container_name: es-cert-setup
+
+    # 用户权限（避免权限问题）
+    user: "0"
+
+    # 执行证书生成命令
+    command: >
+      bash -c '
+        if [ x${ELASTIC_PASSWORD} == x ]; then
+          echo "设置 ELASTIC_PASSWORD 环境变量";
+          exit 1;
+        elif [ x${KIBANA_PASSWORD} == x ]; then
+          echo "设置 KIBANA_PASSWORD 环境变量";
+          exit 1;
+        fi;
+        if [ ! -f config/certs/ca.zip ]; then
+          echo "创建 CA 证书";
+          bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+          unzip config/certs/ca.zip -d config/certs;
+        fi;
+        if [ ! -f config/certs/certs.zip ]; then
+          echo "创建节点证书";
+          echo -ne \
+          "instances:\n"\
+          "  - name: es01\n"\
+          "    dns:\n"\
+          "      - es01\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
+          "  - name: kibana\n"\
+          "    dns:\n"\
+          "      - kibana\n"\
+          "      - localhost\n"\
+          "    ip:\n"\
+          "      - 127.0.0.1\n"\
+          > config/certs/instances.yml;
+          bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
+          unzip config/certs/certs.zip -d config/certs;
+        fi;
+        echo "设置文件权限";
+        chown -R root:root config/certs;
+        find . -type d -exec chmod 750 \{\} \;;
+        find . -type f -exec chmod 640 \{\} \;;
+        echo "等待 Elasticsearch 可用性";
+        until curl -s --cacert config/certs/ca/ca.crt https://es01:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
+        echo "设置 kibana_system 密码";
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://es01:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "所有完成!";
+      '
+
+    # 环境变量
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+
+    # 挂载证书目录
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+
+    # 网络配置
+    networks:
+      - logging-network
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/es01/es01.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  # ===========================================
+  # Elasticsearch 主节点 (es01)
+  # ===========================================
+  es01:
+    # 依赖证书生成服务
+    depends_on:
+      setup:
+        condition: service_healthy
+
+    # 使用官方 Elasticsearch 8.15.3 镜像
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    # 容器名称
+    container_name: es01
+
+    # 环境变量配置
+    environment:
+      # ----------------------------------------
+      # 节点基础配置
+      # ----------------------------------------
+      # 节点名称
+      - node.name=es01
+      # 集群名称
+      - cluster.name=es-ssl-cluster
+
+      # ----------------------------------------
+      # 集群发现配置
+      # ----------------------------------------
+      # 单节点模式
+      - discovery.type=single-node
+
+      # ----------------------------------------
+      # 内存配置
+      # ----------------------------------------
+      # 启用内存锁定
+      - bootstrap.memory_lock=true
+      # JVM 堆内存配置
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+
+      # ----------------------------------------
+      # 安全配置（启用）
+      # ----------------------------------------
+      # 启用 X-Pack 安全功能
+      - xpack.security.enabled=true
+      # 设置内置用户密码
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+
+      # ----------------------------------------
+      # SSL/TLS 配置（启用）
+      # ----------------------------------------
+      # 启用 HTTP SSL
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/es01/es01.key
+      - xpack.security.http.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.http.ssl.verification_mode=certificate
+
+      # 启用传输层 SSL（节点间通信）
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/es01/es01.key
+      - xpack.security.transport.ssl.certificate=certs/es01/es01.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+
+      # ----------------------------------------
+      # 性能优化配置
+      # ----------------------------------------
+      # 线程池配置
+      - thread_pool.write.queue_size=1000
+      - thread_pool.search.queue_size=1000
+      # 索引配置
+      - indices.memory.index_buffer_size=20%
+      - indices.queries.cache.size=20%
+      # 日志级别
+      - logger.level=INFO
+
+    # 系统资源限制
+    ulimits:
+      # 内存锁定限制
+      memlock:
+        soft: -1
+        hard: -1
+      # 文件描述符限制
+      nofile:
+        soft: 65536
+        hard: 65536
+
+    # 挂载配置
+    volumes:
+      # 数据持久化目录
+      - es-data01:/usr/share/elasticsearch/data
+      # SSL 证书目录
+      - certs:/usr/share/elasticsearch/config/certs:ro
+
+    # 端口映射
+    ports:
+      # HTTPS API 端口
+      - "9200:9200"
+      # 传输层端口（集群通信）
+      - "9300:9300"
+
+    # 网络配置
+    networks:
+      - logging-network
+      - kafka
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 健康检查配置
+    healthcheck:
+      # 检查命令：使用 HTTPS 访问 Elasticsearch API
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt -u elastic:${ELASTIC_PASSWORD} https://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=50s || exit 1",
+        ]
+      # 检查间隔：每30秒检查一次
+      interval: 30s
+      # 超时时间：15秒
+      timeout: 15s
+      # 重试次数：5次
+      retries: 5
+      # 启动等待时间：80秒
+      start_period: 80s
+
+    # 系统资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # ===========================================
+  # Kibana 服务（可选）
+  # ===========================================
+  kibana:
+    # 依赖 Elasticsearch 服务
+    depends_on:
+      es01:
+        condition: service_healthy
+
+    # 使用官方 Kibana 镜像
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    # 容器名称
+    container_name: kibana
+
+    # 环境变量配置
+    environment:
+      # Elasticsearch 连接配置
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+
+      # Kibana SSL 配置
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=config/certs/kibana/kibana.crt
+      - SERVER_SSL_KEY=config/certs/kibana/kibana.key
+
+      # 其他配置
+      - SERVER_PUBLICBASEURL=https://localhost:5601
+
+    # 挂载配置
+    volumes:
+      # SSL 证书目录
+      - certs:/usr/share/kibana/config/certs:ro
+
+    # 端口映射
+    ports:
+      # Kibana HTTPS 端口
+      - "5601:5601"
+
+    # 网络配置
+    networks:
+      - logging-network
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 健康检查
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:5601/api/status || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# ===========================================
+# 数据卷定义
+# ===========================================
+volumes:
+  # SSL 证书数据卷
+  certs:
+    driver: local
+    labels:
+      - "service=elasticsearch"
+      - "type=certificates"
+
+  # Elasticsearch 数据卷
+  es-data01:
+    driver: local
+    labels:
+      - "service=elasticsearch"
+      - "environment=ssl"
+
+# ===========================================
+# 网络定义
+# ===========================================
+networks:
+  # 日志处理网络
+  logging-network:
+    external: true
+
+  # Kafka 网络
+  kafka:
+    external: true

@@ -90,7 +90,7 @@ datasources:
     url: http://elasticsearch:9200
     jsonData:
       timeField: '@timestamp'
-      index: "app-logs-*"
+      index: "logstash-*"
       logMessageField: "message"
       logLevelField: "level.keyword"
       spanIdField: "spanID"

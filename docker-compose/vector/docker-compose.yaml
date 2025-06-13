@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  vector:
+    container_name: vector
+    image: timberio/vector:0.47.0-debian
+    environment:
+      - VECTOR_CONFIG=/etc/vector/vector.toml
+    volumes:
+      - ./vector.toml:/etc/vector/vector.toml:ro
+      - ./log:/var/log:ro
+    healthcheck:
+      test: ["CMD-SHELL", "vector validate --config-toml /etc/vector/vector.toml && curl -f http://localhost:8686/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    ports:
+      - "8686:8686"
+    networks:
+      - logging-network
+      - kafka
+
+networks:
+  kafka:
+    external: true
+  logging-network:
+    external: true

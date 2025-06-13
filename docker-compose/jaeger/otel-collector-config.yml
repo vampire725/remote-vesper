@@ -1,0 +1,118 @@
+receivers:
+  # OTLP接收器 - 接收符合OpenTelemetry标准的数据
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4315
+      http:
+        endpoint: 0.0.0.0:4316
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+  # Jaeger接收器 - 兼容传统Jaeger格式
+  jaeger:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14251
+      thrift_http:
+        endpoint: 0.0.0.0:14269
+      thrift_compact:
+        endpoint: 0.0.0.0:6832
+      thrift_binary:
+        endpoint: 0.0.0.0:6833
+
+  # Zipkin接收器 - 兼容Zipkin格式
+  zipkin:
+    endpoint: 0.0.0.0:9411
+
+processors:
+  # 批处理器 - 提高性能
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # 内存限制器 - 防止内存溢出
+  memory_limiter:
+    limit_mib: 400
+    spike_limit_mib: 100
+    check_interval: 5s
+
+  # 资源处理器 - 添加资源属性
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: "production"
+        action: upsert
+      - key: service.instance.id
+        from_attribute: host.name
+        action: insert
+
+  # 属性处理器 - 修改span属性
+  attributes:
+    actions:
+      - key: environment
+        value: "jaeger-tracing"
+        action: upsert
+
+exporters:
+  # OTLP导出器 - 导出到Jaeger Collector（gRPC）
+  otlp:
+    endpoint: jaeger-collector:4317
+    tls:
+      insecure: true
+
+  # OTLP HTTP导出器 - 导出到Jaeger Collector（HTTP）
+  otlphttp:
+    endpoint: http://jaeger-collector:4318/v1/traces
+    tls:
+      insecure: true
+
+  # 日志导出器 - 用于调试
+  logging:
+    loglevel: info
+    sampling_initial: 2
+    sampling_thereafter: 500
+
+  # Prometheus导出器 - 导出指标
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    const_labels:
+      environment: "jaeger-tracing"
+
+extensions:
+  # 健康检查
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # PProf扩展 - 性能分析
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zPages扩展 - 调试页面
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  
+  pipelines:
+    # Traces流水线
+    traces:
+      receivers: [otlp, jaeger, zipkin]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [otlp, otlphttp, logging]
+    
+    # Metrics流水线（如果需要）
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, logging]
+
+  telemetry:
+    logs:
+      level: "info"
+    metrics:
+      address: 0.0.0.0:8888 

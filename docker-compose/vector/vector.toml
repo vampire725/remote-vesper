@@ -1,0 +1,30 @@
+[log_schema]
+host_key = "host"
+message_key = "message"
+
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+
+
+[sources.myapp_logs]
+type = "file"
+include = ["/var/log/myapp.log"]
+ignore_older_secs = 86400
+read_from = "beginning"
+
+
+[transforms.parse_json]
+type = "remap"
+inputs = ["myapp_logs"]
+source = '''
+  . = parse_json!(.message)
+'''
+
+[sinks.kafka]
+type = "kafka"
+inputs = ["parse_json"]
+bootstrap_servers = "kafka:9092"
+topic = "app-logs"
+encoding.codec = "json"
+compression = "gzip"

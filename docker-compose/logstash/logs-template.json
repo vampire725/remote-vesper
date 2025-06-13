@@ -1,0 +1,24 @@
+{
+  "index_patterns": ["logstash-*"],
+  "template": {
+    "mappings": {
+      "dynamic": false,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "caller": { "type": "keyword" },
+        "duration": { "type": "float" },
+        "level": { "type": "keyword" },
+        "method": { "type": "keyword" },
+        "msg": { "type": "text" },
+        "path": { "type": "keyword" },
+        "spanID": { "type": "keyword" },
+        "spanName": { "type": "keyword" },
+        "traceID": { "type": "keyword" },
+        "userAgent": { "type": "keyword" },
+        "items_processed": { "type": "integer" }
+      }
+    }
+  },
+  "priority": 100,
+  "_meta": { "description": "Logstash JSON 日志模板" }
+}

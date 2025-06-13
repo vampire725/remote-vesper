@@ -1,0 +1,163 @@
+# ===========================================
+# Kibana Docker Compose 配置文件 (带认证版本)
+# 文件名: docker-compose.yaml
+# 功能: 定义 Kibana 数据可视化平台的容器化部署 (带认证)
+# 版本: Kibana 8.15.3
+# ===========================================
+
+# Docker Compose 配置文件版本
+# version: "3.8"  # 版本号已过时，现代Docker Compose不再需要
+
+services:
+  # ==========================================
+  # Kibana 数据可视化平台 (带认证版本)
+  # ==========================================
+  kibana:
+    # 使用官方 Kibana 8.15.3 镜像
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    # 容器名称
+    container_name: kibana-auth
+
+    # 环境变量配置
+    environment:
+      # ----------------------------------------
+      # Elasticsearch 连接配置 (HTTPS 带认证)
+      # ----------------------------------------
+      # Elasticsearch 集群地址（HTTPS）
+      - ELASTICSEARCH_HOSTS=https://es01:9200
+      # Elasticsearch 用户认证
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=your_elastic_password
+      # SSL 证书配置
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca/ca.crt
+      - I18N_LOCALE=zh-CN
+
+      # ----------------------------------------
+      # Kibana 服务配置
+      # ----------------------------------------
+      # 服务名称
+      - SERVER_NAME=kibana-auth
+      # 监听地址（0.0.0.0 表示监听所有网络接口）
+      - SERVER_HOST=0.0.0.0
+      # 服务端口
+      - SERVER_PORT=5601
+      # 公开访问地址（可选，用于反向代理）
+      - SERVER_PUBLICBASEURL=http://localhost:5601
+
+      # ----------------------------------------
+      # 安全配置 (启用认证)
+      # ----------------------------------------
+      # 启用 X-Pack 安全功能
+      - XPACK_SECURITY_ENABLED=true
+      # 加密密钥（用于加密保存的对象）
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d
+      # 报告加密密钥
+      - XPACK_REPORTING_ENCRYPTIONKEY=a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d
+      # 安全加密密钥
+      - XPACK_SECURITY_ENCRYPTIONKEY=a7a6311933d3503b89bc2dbc36572c33a6c10925682e591bffcab6911c06786d
+
+      # ----------------------------------------
+      # 日志配置
+      # ----------------------------------------
+      # 日志级别
+      - LOGGING_ROOT_LEVEL=info
+      # 静默弃用警告
+      - LOGGING_QUIET=true
+
+      # ----------------------------------------
+      # 性能优化配置
+      # ----------------------------------------
+      # 数据视图缓存大小
+      - DATA_VIEWS_CACHE_MAX_AGE=10m
+      # 搜索超时时间
+      - ELASTICSEARCH_REQUESTTIMEOUT=90000
+      # 分片超时时间
+      - ELASTICSEARCH_SHARDTIMEOUT=30000
+
+    # 挂载配置
+    volumes:
+      # SSL 证书目录（与 Elasticsearch 共享）
+      - ../es/certs:/usr/share/kibana/config/certs:ro
+      # Kibana 配置文件目录（可选）
+      - ./config:/usr/share/kibana/config/custom:ro
+      # Kibana 数据目录（可选，用于插件等）
+      - kibana-data:/usr/share/kibana/data
+
+    # 端口映射
+    ports:
+      # Kibana Web 界面端口
+      - "5601:5601"
+
+    # 网络配置
+    networks:
+      - logging-network # 与 Elasticsearch 通信
+      - monitoring-network # 监控网络
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 依赖关系：等待 Elasticsearch 启动
+    depends_on:
+      - elasticsearch-check
+
+    # 健康检查配置
+    healthcheck:
+      # 检查命令：访问 Kibana API
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status || exit 1"]
+      # 检查间隔：每30秒检查一次
+      interval: 30s
+      # 超时时间：10秒
+      timeout: 10s
+      # 重试次数：5次
+      retries: 5
+      # 启动等待时间：120秒（给 Kibana 足够的启动时间）
+      start_period: 120s
+
+  # ==========================================
+  # Elasticsearch 连接检查服务 (带认证)
+  # ==========================================
+  elasticsearch-check:
+    # 使用轻量级镜像进行连接检查
+    image: curlimages/curl:latest
+    # 容器名称
+    container_name: elasticsearch-check-auth
+
+    # 检查命令：等待 Elasticsearch 可用（带认证）
+    command: >
+      sh -c "
+        echo '等待 Elasticsearch 启动（认证模式）...'
+        until curl -k -s -u elastic:your_elastic_password https://es01:9200/_cluster/health; do
+          echo '等待 Elasticsearch 响应...'
+          sleep 5
+        done
+        echo 'Elasticsearch 已就绪！'
+      "
+
+    # 网络配置
+    networks:
+      - logging-network
+
+    # 重启策略：失败时不重启
+    restart: "no"
+
+# ==========================================
+# 数据卷配置
+# ==========================================
+volumes:
+  # Kibana 数据卷
+  kibana-data:
+    driver: local
+
+# ==========================================
+# 网络配置
+# ==========================================
+networks:
+  # 日志处理网络（与 Elasticsearch 通信）
+  logging-network:
+    external: true
+    name: logging-network
+
+  # 监控网络（与监控系统通信）
+  monitoring-network:
+    external: true
+    name: monitoring-network

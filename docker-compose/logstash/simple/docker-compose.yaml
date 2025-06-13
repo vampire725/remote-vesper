@@ -1,0 +1,86 @@
+# Logstash 简单部署配置
+# 适用于开发和测试环境，不包含认证和SSL配置
+# 版本: Logstash 8.15.3 (最新稳定版)
+
+services:
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.3
+    container_name: logstash-simple
+    hostname: logstash
+    restart: unless-stopped
+
+    # 端口映射
+    ports:
+      - "9600:9600" # HTTP API端口（用于监控和管理）
+
+    # 环境变量配置
+    environment:
+      # JVM堆内存设置
+      - LS_JAVA_OPTS=-Xmx1g -Xms1g
+      # 禁用X-Pack监控（简化配置）
+      - xpack.monitoring.enabled=false
+      # 配置文件路径
+      - path.config=/usr/share/logstash/pipeline
+      - path.logs=/usr/share/logstash/logs
+      # 日志级别
+      - LOG_LEVEL=info
+      # 禁用配置测试（加快启动）
+      - config.test_and_exit=false
+      - config.reload.automatic=true
+      - config.reload.interval=3s
+
+    # 数据卷挂载
+    volumes:
+      # 管道配置文件
+      - ./pipeline:/usr/share/logstash/pipeline:ro
+      # Logstash配置目录（给予读写权限）
+      - ./config:/usr/share/logstash/config
+      # 日志目录
+      - logstash_logs:/usr/share/logstash/logs
+      # 数据目录
+      - logstash_data:/usr/share/logstash/data
+
+    # 网络配置
+    networks:
+      - logging-network
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+# 数据卷定义
+volumes:
+  logstash_logs:
+    driver: local
+    name: logstash_simple_logs
+  logstash_data:
+    driver: local
+    name: logstash_simple_data
+
+# 网络定义
+networks:
+  logging-network:
+    name: logging-network
+    driver: bridge
+    external: true

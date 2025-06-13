@@ -1,11 +1,61 @@
-http.host: "0.0.0.0"
-xpack.monitoring.enabled: true
-xpack.monitoring.elasticsearch.hosts: ["${ELASTICSEARCH_HOSTS}"]
-xpack.monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
-xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
-xpack.monitoring.elasticsearch.ssl.enabled: true
-xpack.monitoring.elasticsearch.ssl.certificate_authority: "/usr/share/logstash/certs/ca.crt"
+# ===========================================
+# Logstash 主配置文件
+# ===========================================
 
+# ----------------------------------------
+# HTTP 服务配置
+# ----------------------------------------
+# HTTP API 绑定地址，0.0.0.0 表示监听所有网络接口
+
+# ----------------------------------------
+# X-Pack 监控配置
+# ----------------------------------------
+# 启用 X-Pack 监控功能
+xpack.monitoring.enabled: true
+
+# Elasticsearch 监控目标地址
+xpack.monitoring.elasticsearch.hosts: ["${ELASTICSEARCH_HOSTS}"]
+
+# 监控数据发送的认证信息
+#xpack.monitoring.elasticsearch.username: "${ELASTICSEARCH_USERNAME}"
+#xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+
+# SSL 配置
+#xpack.monitoring.elasticsearch.ssl.enabled: true
+#xpack.monitoring.elasticsearch.ssl.certificate_authority: "/usr/share/logstash/certs/ca.crt"
+#
+# ----------------------------------------
+# 路径配置
+# ----------------------------------------
+# 管道配置文件路径
 path.config: /usr/share/logstash/pipeline
+
+# 日志文件存储路径
 path.logs: /var/log/logstash
-log.level: info 
+
+# ----------------------------------------
+# 日志配置
+# ----------------------------------------
+# 日志级别：debug, info, warn, error
+log.level: info
+
+# ----------------------------------------
+# 性能优化配置
+# ----------------------------------------
+# 管道工作线程数（建议设置为 CPU 核心数）
+pipeline.workers: 2
+
+# 批处理大小：每批处理的事件数量
+pipeline.batch.size: 125
+
+# 批处理延迟：等待批次填满的最大时间（毫秒）
+pipeline.batch.delay: 50
+
+# ----------------------------------------
+# API 监控配置
+# ----------------------------------------
+# API HTTP 服务绑定地址
+api.http.host: "0.0.0.0"
+
+# API HTTP 服务端口
+api.http.port: 9600

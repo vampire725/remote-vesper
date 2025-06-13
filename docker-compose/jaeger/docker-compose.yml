@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  # Elasticsearch - 作为Jaeger的存储后端
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: jaeger-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - jaeger-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Jaeger Collector - 接收和处理trace数据
+  jaeger-collector:
+    image: jaegertracing/jaeger-collector:1.52
+    container_name: jaeger-collector
+    environment:
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://elasticsearch:9200
+      - ES_NUM_SHARDS=1
+      - ES_NUM_REPLICAS=0
+      - LOG_LEVEL=info
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "14268:14268"   # Jaeger HTTP
+      - "14250:14250"   # Jaeger gRPC
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    networks:
+      - jaeger-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    command: [
+      "--es.server-urls=http://elasticsearch:9200",
+      "--es.num-shards=1",
+      "--es.num-replicas=0",
+      "--collector.otlp.grpc.host-port=0.0.0.0:4317",
+      "--collector.otlp.http.host-port=0.0.0.0:4318"
+    ]
+
+  # Jaeger Query - 提供UI和查询API
+  jaeger-query:
+    image: jaegertracing/jaeger-query:1.52
+    container_name: jaeger-query
+    environment:
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "16687:16687"   # Admin port
+      - "16685:16685"   # gRPC QueryService (RPC端口)
+    networks:
+      - jaeger-net
+    depends_on:
+      - elasticsearch
+      - jaeger-collector
+    command: [
+      "--es.server-urls=http://elasticsearch:9200"
+    ]
+
+  # OpenTelemetry Collector - 作为统一的遥测数据收集器
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4315:4315"     # OTLP gRPC (外部接入)
+      - "4316:4316"     # OTLP HTTP (外部接入)
+      - "8888:8888"     # Prometheus metrics
+      - "8889:8889"     # Prometheus exporter metrics
+      - "13133:13133"   # Health check
+    networks:
+      - jaeger-net
+    depends_on:
+      - jaeger-collector
+
+  # Jaeger Agent (可选) - 本地代理，用于缓冲和批处理
+  jaeger-agent:
+    image: jaegertracing/jaeger-agent:1.52
+    container_name: jaeger-agent
+    environment:
+      - LOG_LEVEL=info
+    ports:
+      - "5775:5775/udp"   # Zipkin compact
+      - "6831:6831/udp"   # Jaeger compact
+      - "6832:6832/udp"   # Jaeger binary
+      - "5778:5778"       # HTTP config
+    networks:
+      - jaeger-net
+    depends_on:
+      - jaeger-collector
+    command: [
+      "--collector.host-port=jaeger-collector:14267"
+    ]
+
+volumes:
+  elasticsearch_data:
+    driver: local
+
+networks:
+  jaeger-net:
+    driver: bridge 

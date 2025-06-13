@@ -1,0 +1,129 @@
+# ===========================================
+# Elasticsearch 简化部署配置文件
+# 文件名: docker-compose.yaml
+# 功能: 单节点 Elasticsearch 部署（无SSL，无认证）
+# 版本: Elasticsearch 8.15.3
+# 用途: 开发和测试环境
+# ===========================================
+
+version: "3.8"
+
+services:
+  # ===========================================
+  # Elasticsearch 单节点服务
+  # ===========================================
+  elasticsearch:
+    # 使用官方 Elasticsearch 8.15.3 镜像
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    # 容器名称
+    container_name: elasticsearch
+
+    # 环境变量配置
+    environment:
+      # ----------------------------------------
+      # 节点基础配置
+      # ----------------------------------------
+      # 节点名称
+      - node.name=elasticsearch
+      # 集群名称
+      - cluster.name=es-simple-cluster
+
+      # ----------------------------------------
+      # 集群发现配置
+      # ----------------------------------------
+      # 单节点模式
+      - discovery.type=single-node
+
+      # ----------------------------------------
+      # 内存配置
+      # ----------------------------------------
+      # 禁用内存锁定（简化配置）
+      - bootstrap.memory_lock=false
+      # JVM 堆内存配置（开发环境使用较小内存）
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+
+      # ----------------------------------------
+      # 安全配置（开发环境禁用）
+      # ----------------------------------------
+      # 禁用 X-Pack 安全功能
+      - xpack.security.enabled=false
+      # 禁用 SSL
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+
+      # ----------------------------------------
+      # 性能优化配置（简化）
+      # ----------------------------------------
+      # 索引配置
+      - indices.memory.index_buffer_size=10%
+      - indices.queries.cache.size=10%
+      # 日志级别
+      - logger.level=INFO
+
+    # 端口映射
+    ports:
+      # HTTP API 端口
+      - "9200:9200"
+      # 传输层端口（集群通信）
+      - "9300:9300"
+
+    # 数据卷配置
+    volumes:
+      # 数据持久化目录
+      - es-simple-data:/usr/share/elasticsearch/data
+
+    # 网络配置
+    networks:
+      - logging-network
+      - kafka
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 健康检查配置
+    healthcheck:
+      # 检查命令：使用 HTTP 访问 Elasticsearch API（无认证）
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1",
+        ]
+      # 检查间隔：每30秒检查一次
+      interval: 30s
+      # 超时时间：10秒
+      timeout: 10s
+      # 重试次数：3次（简化）
+      retries: 3
+      # 启动等待时间：30秒
+      start_period: 30s
+
+    # 系统资源限制（简化）
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+# ===========================================
+# 数据卷定义
+# ===========================================
+volumes:
+  # Elasticsearch 数据卷
+  es-simple-data:
+    driver: local
+    labels:
+      - "service=elasticsearch"
+      - "environment=simple"
+
+# ===========================================
+# 网络定义
+# ===========================================
+networks:
+  # 日志处理网络
+  logging-network:
+    external: true
+
+  # Kafka 网络
+  kafka:
+    external: true

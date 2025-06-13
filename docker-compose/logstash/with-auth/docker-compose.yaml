@@ -1,0 +1,253 @@
+# Logstash 企业级部署配置
+# 包含完整的认证、SSL和监控配置
+# 版本: Logstash 8.15.3 (最新稳定版)
+
+services:
+  # Logstash 主服务
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.3
+    container_name: logstash-auth
+    hostname: logstash-auth
+    restart: unless-stopped
+
+    # 端口映射
+    ports:
+      - "5044:5044" # Beats输入端口 (SSL)
+      - "9600:9600" # HTTP API端口 (SSL)
+      - "5000:5000" # TCP输入端口 (SSL)
+      - "5001:5001" # UDP输入端口
+      - "8080:8080" # HTTP输入端口 (SSL)
+
+    # 环境变量配置
+    environment:
+      # JVM堆内存设置
+      - LS_JAVA_OPTS=-Xmx2g -Xms2g
+      # 启用X-Pack监控
+      - xpack.monitoring.enabled=true
+      - xpack.monitoring.elasticsearch.hosts=["https://elasticsearch:9200"]
+      - xpack.monitoring.elasticsearch.username=${ELASTIC_USERNAME}
+      - xpack.monitoring.elasticsearch.password=${ELASTIC_PASSWORD}
+      - xpack.monitoring.elasticsearch.ssl.certificate_authority=/usr/share/logstash/config/certs/ca/ca.crt
+      # 配置文件路径
+      - path.config=/usr/share/logstash/pipeline
+      - path.logs=/usr/share/logstash/logs
+      # 日志级别
+      - LOG_LEVEL=info
+      # 配置重载
+      - config.test_and_exit=false
+      - config.reload.automatic=true
+      - config.reload.interval=3s
+      # 安全配置
+      - LOGSTASH_KEYSTORE_PASS=${LOGSTASH_KEYSTORE_PASS}
+
+    # 数据卷挂载
+    volumes:
+      # 管道配置文件
+      - ./pipeline:/usr/share/logstash/pipeline:ro
+      # Logstash配置文件
+      - ./config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      # SSL证书
+      - ./certs:/usr/share/logstash/config/certs:ro
+      # 密钥库
+      - ./config/logstash.keystore:/usr/share/logstash/config/logstash.keystore:ro
+      # 日志目录
+      - logstash_logs:/usr/share/logstash/logs
+      # 数据目录
+      - logstash_data:/usr/share/logstash/data
+      # 队列目录（持久化队列）
+      - logstash_queue:/usr/share/logstash/data/queue
+
+    # 网络配置
+    networks:
+      - logging-network
+      - elastic-network
+
+    # 服务依赖
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    # 健康检查
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f -k -u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD} https://localhost:9600/_node/stats || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+        reservations:
+          memory: 2G
+          cpus: "1.0"
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+    # 用户配置
+    user: "1000:1000"
+
+  # Elasticsearch 服务（用于存储和监控）
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: elasticsearch-auth
+    hostname: elasticsearch
+    restart: unless-stopped
+
+    # 环境变量
+    environment:
+      # 集群配置
+      - node.name=elasticsearch-auth
+      - cluster.name=logstash-cluster
+      - discovery.type=single-node
+      # 内存配置
+      - ES_JAVA_OPTS=-Xmx1g -Xms1g
+      # 安全配置
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/elasticsearch/elasticsearch.key
+      - xpack.security.http.ssl.certificate=certs/elasticsearch/elasticsearch.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/elasticsearch/elasticsearch.key
+      - xpack.security.transport.ssl.certificate=certs/elasticsearch/elasticsearch.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      # 用户密码
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
+
+    # 端口映射
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+    # 数据卷
+    volumes:
+      - ./certs:/usr/share/elasticsearch/config/certs:ro
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+    # 网络
+    networks:
+      - elastic-network
+
+    # 健康检查
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f -k -u elastic:${ELASTIC_PASSWORD} https://localhost:9200/_cluster/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+
+  # Kibana 服务（可选，用于可视化）
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: kibana-auth
+    hostname: kibana
+    restart: unless-stopped
+
+    # 环境变量
+    environment:
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=config/certs/kibana/kibana.crt
+      - SERVER_SSL_KEY=config/certs/kibana/kibana.key
+      - XPACK_SECURITY_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY}
+      - XPACK_REPORTING_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY}
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=${KIBANA_ENCRYPTION_KEY}
+
+    # 端口映射
+    ports:
+      - "5601:5601"
+
+    # 数据卷
+    volumes:
+      - ./certs:/usr/share/kibana/config/certs:ro
+      - kibana_data:/usr/share/kibana/data
+
+    # 网络
+    networks:
+      - elastic-network
+
+    # 服务依赖
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    # 健康检查
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -f -k https://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
+        reservations:
+          memory: 512M
+          cpus: "0.25"
+
+# 数据卷定义
+volumes:
+  logstash_logs:
+    driver: local
+    name: logstash_auth_logs
+  logstash_data:
+    driver: local
+    name: logstash_auth_data
+  logstash_queue:
+    driver: local
+    name: logstash_auth_queue
+  elasticsearch_data:
+    driver: local
+    name: elasticsearch_auth_data
+  kibana_data:
+    driver: local
+    name: kibana_auth_data
+
+# 网络定义
+networks:
+  logging-network:
+    name: logging-network
+    driver: bridge
+    external: true
+  elastic-network:
+    name: elastic-auth-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

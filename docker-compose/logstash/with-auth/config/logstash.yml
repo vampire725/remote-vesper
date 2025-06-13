@@ -1,0 +1,166 @@
+# Logstash 企业级配置文件
+# 包含完整的安全、监控和性能配置
+
+# ================================
+# 节点配置
+# ================================
+node.name: logstash-auth
+cluster.uuid: logstash-cluster
+
+# ================================
+# 数据路径配置
+# ================================
+path.data: /usr/share/logstash/data
+path.logs: /usr/share/logstash/logs
+path.settings: /usr/share/logstash/config
+
+# ================================
+# 管道配置
+# ================================
+pipeline.workers: 4
+pipeline.batch.size: 250
+pipeline.batch.delay: 50
+pipeline.unsafe_shutdown: false
+
+# 多管道配置
+pipelines.yml: /usr/share/logstash/config/pipelines.yml
+
+# ================================
+# HTTP API 配置（启用SSL）
+# ================================
+http.host: "0.0.0.0"
+http.port: 9600
+
+# SSL 配置
+api.ssl.enabled: true
+api.ssl.keystore.path: /usr/share/logstash/config/certs/logstash/logstash.p12
+api.ssl.keystore.password: "${LOGSTASH_KEYSTORE_PASS}"
+api.ssl.truststore.path: /usr/share/logstash/config/certs/ca/ca.p12
+api.ssl.truststore.password: "${CA_PASSWORD}"
+
+# API 认证
+api.auth.type: basic
+api.auth.basic.username: "logstash"
+api.auth.basic.password: "${LOGSTASH_API_PASSWORD}"
+
+# ================================
+# 日志配置
+# ================================
+log.level: info
+slowlog.threshold.warn: 2s
+slowlog.threshold.info: 1s
+slowlog.threshold.debug: 500ms
+slowlog.threshold.trace: 100ms
+
+# 日志格式
+log.format: json
+
+# ================================
+# 配置重载
+# ================================
+config.reload.automatic: true
+config.reload.interval: 3s
+
+# ================================
+# X-Pack 监控配置
+# ================================
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.hosts: ["https://elasticsearch:9200"]
+xpack.monitoring.elasticsearch.username: "${ELASTIC_USERNAME}"
+xpack.monitoring.elasticsearch.password: "${ELASTIC_PASSWORD}"
+
+# 监控 SSL 配置
+xpack.monitoring.elasticsearch.ssl.certificate_authority: /usr/share/logstash/config/certs/ca/ca.crt
+xpack.monitoring.elasticsearch.ssl.verification_mode: certificate
+
+# 监控数据配置
+xpack.monitoring.collection.interval: 10s
+xpack.monitoring.collection.pipeline.details.enabled: true
+
+# ================================
+# 队列配置（持久化队列）
+# ================================
+queue.type: persisted
+queue.max_events: 0
+queue.max_bytes: 2gb
+queue.page_capacity: 64mb
+queue.max_pages: 32
+queue.checkpoint.acks: 1024
+queue.checkpoint.writes: 1024
+queue.checkpoint.interval: 1000
+
+# ================================
+# 死信队列配置
+# ================================
+dead_letter_queue.enable: true
+dead_letter_queue.max_bytes: 1gb
+dead_letter_queue.flush_interval: 5000
+dead_letter_queue.commit_offsets: true
+
+# ================================
+# 安全配置
+# ================================
+
+# 密钥库配置
+keystore.file: /usr/share/logstash/config/logstash.keystore
+
+# SSL 全局配置
+ssl.certificate_authorities: ["/usr/share/logstash/config/certs/ca/ca.crt"]
+ssl.certificate: "/usr/share/logstash/config/certs/logstash/logstash.crt"
+ssl.key: "/usr/share/logstash/config/certs/logstash/logstash.key"
+ssl.verification_mode: certificate
+
+# ================================
+# 性能调优配置
+# ================================
+
+# JVM 配置
+jvm.options: |
+  -Xms2g
+  -Xmx2g
+  -XX:+UseG1GC
+  -XX:MaxGCPauseMillis=200
+  -XX:+UnlockExperimentalVMOptions
+  -XX:+UseCGroupMemoryLimitForHeap
+
+# 网络配置
+network.host: "0.0.0.0"
+
+# ================================
+# 插件配置
+# ================================
+
+# 自动重载插件
+config.support_escapes: true
+
+# ================================
+# 调试配置
+# ================================
+
+# 配置调试
+config.debug: false
+
+# 管道调试
+pipeline.debug: false
+
+# ================================
+# 集群配置
+# ================================
+
+# 集群设置（如果使用多节点）
+# cluster.name: "logstash-cluster"
+# node.name: "logstash-auth-node-1"
+
+# ================================
+# 模块配置
+# ================================
+
+# 禁用不需要的模块
+modules:
+  - name: netflow
+    var.input.udp.port: 2055
+    enabled: false
+  - name: azure
+    enabled: false
+  - name: arcsight
+    enabled: false

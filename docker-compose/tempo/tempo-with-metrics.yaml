@@ -1,0 +1,103 @@
+# Tempo 配置文件 - 包含指标生成器
+# 此配置启用了指标生成功能，可以自动生成服务图谱和span指标
+
+# 服务器配置
+server:
+  http_listen_port: 3200 # HTTP API 监听端口，用于查询和健康检查
+  grpc_listen_port: 9095 # gRPC 监听端口，用于内部组件通信
+  log_level: info # 日志级别：debug, info, warn, error
+
+# 分发器配置 - 负责接收追踪数据
+distributor:
+  receivers: # 配置支持的协议接收器
+    otlp: # OpenTelemetry 协议
+      protocols:
+        grpc: # gRPC 协议配置
+          endpoint: 0.0.0.0:4317 # 监听所有网络接口的4317端口
+        http: # HTTP 协议配置
+          endpoint: 0.0.0.0:4318 # 监听所有网络接口的4318端口
+
+# 摄取器配置 - 负责将追踪数据写入存储
+ingester:
+  max_block_duration: 5m # 最大块持续时间，超过后强制刷盘
+  max_block_bytes: 1_000_000 # 最大块大小（1MB），超过后刷盘
+  lifecycler: # 生命周期管理
+    ring: # 环形拓扑配置
+      kvstore: # 键值存储配置
+        store: inmemory # 使用内存存储（单节点模式）
+      replication_factor: 1 # 副本因子，单节点设为1
+
+# 压缩器配置 - 负责数据压缩和清理
+compactor:
+  compaction:
+    compaction_window: 1h # 压缩窗口，每小时执行一次压缩
+    max_block_bytes: 100_000_000 # 压缩后最大块大小（100MB）
+    block_retention: 24h # 原始块保留时间（24小时）
+    compacted_block_retention: 1h # 压缩块保留时间（1小时）
+
+# 指标生成器配置 - 从追踪数据生成指标
+metrics_generator:
+  registry: # 指标注册表配置
+    external_labels: # 外部标签，添加到所有生成的指标
+      cluster: docker-compose # 集群标识
+  storage: # 指标存储配置
+    path: /tmp/tempo/generator/wal # WAL（预写日志）存储路径
+    remote_write: # 远程写入配置
+      - url: http://prometheus:9090/api/v1/write # Prometheus 远程写入端点
+        send_exemplars: true # 发送示例数据，用于指标和追踪关联
+  traces_storage: # 追踪存储配置
+    path: /tmp/tempo/generator/traces # 追踪数据临时存储路径
+  processor: # 处理器配置
+    service_graphs: # 服务图谱生成器
+      dimensions: ["http.method", "http.status_code"] # 服务图谱维度
+    span_metrics: # Span 指标生成器
+      dimensions: ["http.method", "http.status_code", "service.version"] # Span指标维度
+    local_blocks: # 本地块处理器
+      flush_to_storage: true # 刷新到存储
+  ring: # 指标生成器环形配置
+    kvstore:
+      store: memberlist # 使用 memberlist 进行节点发现
+
+# 存储配置
+storage:
+  trace: # 追踪数据存储
+    backend: local # 存储后端：local（本地文件）
+    wal: # 预写日志配置
+      path: /tmp/tempo/wal # WAL 存储路径
+    local: # 本地存储配置
+      path: /tmp/tempo/blocks # 数据块存储路径
+
+# 查询前端配置 - 负责查询优化和缓存
+query_frontend:
+  search: # 搜索配置
+    duration_slo: 5s # 搜索持续时间SLO（服务级别目标）
+    throughput_bytes_slo: 1.073741824e+09 # 吞吐量SLO（1GB）
+  trace_by_id: # 按ID查询追踪配置
+    duration_slo: 5s # 查询持续时间SLO
+  metrics: # 指标查询配置
+    concurrent_jobs: 1000 # 并发作业数
+    target_bytes_per_job: 104857600 # 每个作业目标字节数（100MB）
+    max_duration: 3h # 最大查询持续时间
+    query_backend_after: 30m # 30分钟后查询后端
+    interval: 5m # 查询间隔
+
+# 查询器配置 - 执行实际的查询操作
+querier:
+  max_concurrent_queries: 5 # 最大并发查询数
+  search: # 搜索配置
+    external_hedge_requests_at: 8s # 8秒后发起对冲请求
+    external_hedge_requests_up_to: 2 # 最多2个对冲请求
+
+# Memberlist 配置 - 用于节点发现和集群管理
+memberlist:
+  abort_if_cluster_join_fails: false # 集群加入失败时不中止
+  bind_port: 7946 # 绑定端口
+  join_members: # 加入的成员列表
+    - localhost:7946 # 本地节点
+
+# 覆盖配置 - 全局配置覆盖
+overrides:
+  metrics_generator_processors: # 启用的指标生成器处理器
+    - service-graphs # 服务图谱生成器
+    - span-metrics # Span指标生成器
+    - local-blocks # 本地块处理器

@@ -1,5 +1,31 @@
-- pipeline.id: main
-  path.config: "/usr/share/logstash/pipeline/*.conf"
-  pipeline.workers: 2
-  pipeline.batch.size: 125
-  pipeline.batch.delay: 50 
+# ===========================================
+# Logstash 管道配置文件
+# 用于定义多个管道的配置参数
+# ===========================================
+
+# ----------------------------------------
+# 主管道配置
+# ----------------------------------------
+- pipeline.id: main # 管道标识符
+  path.config: "/usr/share/logstash/pipeline/*.conf" # 管道配置文件路径（支持通配符）
+  pipeline.workers: 2 # 管道工作线程数
+  pipeline.batch.size: 125 # 批处理大小：每批处理的事件数量
+  pipeline.batch.delay: 50 # 批处理延迟：等待批次的最大时间（毫秒）
+
+# ----------------------------------------
+# 管道配置说明
+# ----------------------------------------
+# pipeline.id: 唯一标识管道，用于监控和管理
+# path.config: 管道配置文件路径，可以是单个文件或使用通配符
+# pipeline.workers: 工作线程数，建议设置为 CPU 核心数
+# pipeline.batch.size: 批处理大小，影响内存使用和处理延迟
+# pipeline.batch.delay: 批处理延迟，平衡吞吐量和延迟
+
+# ----------------------------------------
+# 多管道示例（如需要可取消注释）
+# ----------------------------------------
+# - pipeline.id: secondary
+#   path.config: "/usr/share/logstash/pipeline/secondary.conf"
+#   pipeline.workers: 1
+#   pipeline.batch.size: 100
+#   pipeline.batch.delay: 100
