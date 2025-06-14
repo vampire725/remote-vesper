@@ -13,12 +13,14 @@ COPY . .
 
 # 构建 Linux 版本
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/gateway /app/api-gateway
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/backservice /app/backend-service
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/backservice1 /app/backend-service/back1.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/backservice2 /app/backend-service/back2.go
 
 
 # 构建 macOS 版本
 RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/gateway-mac /app/api-gateway
-RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/backservice-mac /app/backend-service
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/backservice1-mac /app/backend-service/back1.go
+RUN CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o /app/backservice2-mac /app/backend-service/back2.go
 
 RUN #CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /app/myapp-macos-arm64
 
