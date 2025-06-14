@@ -34,6 +34,8 @@ metrics_generator:
     path: /tmp/tempo/generator/traces
   processor:
     service_graphs:
+      wait: 10s # 等待关联span的时间
+      max_items: 10_000
       dimensions: ['http.method', 'http.status_code']
     span_metrics:
       dimensions: ['http.method', 'http.status_code', 'service.version']

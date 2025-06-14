@@ -62,4 +62,4 @@ for target in "${TARGET_DIRS[@]}"; do
     fi
 done
 
-echo "✅ 服务列表检查完成
+echo "✅ 服务列表检查完成"

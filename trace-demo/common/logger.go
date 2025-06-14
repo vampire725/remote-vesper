@@ -23,7 +23,7 @@ var Logger *zap.Logger
 
 func InitLogger() {
 	config := zap.NewProductionConfig()
-	config.OutputPaths = []string{"./log/myapp.log"}
+	config.OutputPaths = []string{"../docker-compose/vector/log/myapp.log"}
 	Logger, _ = config.Build()
 
 	defer Logger.Sync()
