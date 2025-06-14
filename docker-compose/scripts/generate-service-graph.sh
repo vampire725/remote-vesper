@@ -326,7 +326,7 @@ verify_service_graph() {
     
     # 检查Prometheus指标
     echo "检查Prometheus服务图数据..."
-    local prom_response=$(curl -s "http://localhost:19090/api/v1/query?query=traces_service_graph_request_total")
+    local prom_response=$(curl -s "http://localhost:9090/api/v1/query?query=traces_service_graph_request_total")
     local result_count=$(echo "$prom_response" | jq -r '.data.result | length' 2>/dev/null || echo "0")
     
     if [ "$result_count" -gt 0 ]; then

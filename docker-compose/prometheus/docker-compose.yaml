@@ -30,7 +30,7 @@ services:
       - ./rules:/etc/prometheus/rules
       - prometheus-storage:/prometheus
     ports:
-      - "19090:9090"
+      - "9090:9090"
     networks:
       - monitoring-network
       - tracing-network
