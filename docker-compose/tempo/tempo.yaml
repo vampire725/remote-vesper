@@ -49,3 +49,30 @@ query_frontend:
 # 查询器配置 - 执行实际的数据查询操作
 querier:
   max_concurrent_queries: 5 # 最大并发查询数，限制同时执行的查询请求数量
+
+# 完整指标生成器配置
+metrics_generator:
+  storage:
+    path: /tmp/tempo/metrics-generator
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write  # 指向Prometheus
+  processors:
+    service_graphs:
+      enabled: true
+      max_duration: 10s
+      interval: 15s  # 缩短处理间隔
+      dimensions:
+        - http.method
+        - http.status_code
+        - service.name
+    span_metrics:
+      enabled: true
+      dimensions:
+        - service.name
+        - span.kind
+        - status.code
+      latency_histogram_buckets: [10ms, 25ms, 50ms, 75ms, 100ms, 250ms, 500ms, 750ms, 1s, 2.5s, 5s, 10s]
+  registry:
+    external_labels:
+      cluster: dev
+      source: tempo

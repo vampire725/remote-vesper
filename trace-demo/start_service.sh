@@ -12,7 +12,7 @@ start_services() {
     nohup ./backservice2 > backservice2.log 2>&1 &
     echo $! > backservice2.pid
 
-    nohup ./vector/gateway > gateway.log 2>&1 &
+    nohup ./gateway > gateway.log 2>&1 &
     echo $! > gateway.pid
 
     # 等待服务启动
