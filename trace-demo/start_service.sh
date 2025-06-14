@@ -2,21 +2,21 @@
 
 # 启动后台服务并发送测试请求
 start_services() {
-    echo "🟢 启动 vector/backservice 和 vector/gateway 二进制文件"
-
-    # 进入目录并后台启动二进制文件
-    nohup ./backservice1 > backservice1.log 2>&1 &
-    echo $! > backservice1.pid
-
-    # 进入目录并后台启动二进制文件
-    nohup ./backservice2 > backservice2.log 2>&1 &
-    echo $! > backservice2.pid
-
-    nohup ./gateway > gateway.log 2>&1 &
-    echo $! > gateway.pid
-
-    # 等待服务启动
-    sleep 5
+#    echo "🟢 启动 vector/backservice 和 vector/gateway 二进制文件"
+#
+#    # 进入目录并后台启动二进制文件
+#    nohup ./backservice1 > backservice1.log 2>&1 &
+#    echo $! > backservice1.pid
+#
+#    # 进入目录并后台启动二进制文件
+#    nohup ./backservice2 > backservice2.log 2>&1 &
+#    echo $! > backservice2.pid
+#
+#    nohup ./gateway > gateway.log 2>&1 &
+#    echo $! > gateway.pid
+#
+#    # 等待服务启动
+#    sleep 5
 
     # 启动循环请求脚本
     echo "🟢 启动循环请求脚本"

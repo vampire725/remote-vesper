@@ -31,6 +31,8 @@ func InitTracer(serviceName string) func() {
 			semconv.ServiceVersion("1.0.0"),
 			attribute.String("environment", "dev"),
 			attribute.String("tempo.compatibility", "2.6.0"),
+			semconv.NetHostName(serviceName), // 新增
+			semconv.ServerAddress(serviceName),
 		),
 	)
 	if err != nil {

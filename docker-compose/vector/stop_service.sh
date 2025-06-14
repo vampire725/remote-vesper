@@ -15,7 +15,8 @@ stop_services() {
 #        kill -9 $(cat gateway.pid) && rm gateway.pid
 #    fi
 
-    pkill -f "gateway" && pkill -f "backservice" || { pgrep -f "gateway" | xargs kill -9 && pgrep -f "backservice" | xargs kill -9; }
+#    pkill -f "gateway" && pkill -f "backservice" || { pgrep -f "gateway" | xargs kill -9 && pgrep -f "backservice" | xargs kill -9; }
+    pkill -f "api/data" || { pgrep -f "api/data" | xargs kill -9; }
 
     # 停止请求脚本
     if [ -f request.pid ]; then

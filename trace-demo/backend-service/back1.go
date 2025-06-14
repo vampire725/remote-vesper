@@ -44,6 +44,7 @@ func processHandler1(w http.ResponseWriter, r *http.Request) {
 	// 添加HTTP属性
 	span.SetAttributes(attribute.String("http.method", r.Method))
 	span.SetAttributes(attribute.String("http.route", "/process"))
+	span.SetAttributes(attribute.String("server.address", "backend-service1"))
 
 	// 模拟处理时间
 	time.Sleep(100 * time.Millisecond)

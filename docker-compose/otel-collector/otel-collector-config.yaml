@@ -76,5 +76,4 @@ service:
 
   telemetry:
     metrics:
-      address: 0.0.0.0:8888
-      level: detailed 
+      level: none

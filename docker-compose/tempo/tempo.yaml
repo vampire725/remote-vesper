@@ -50,29 +50,19 @@ query_frontend:
 querier:
   max_concurrent_queries: 5 # 最大并发查询数，限制同时执行的查询请求数量
 
-# 完整指标生成器配置
+# 完整指标生成器配置 (修正版)
 metrics_generator:
   storage:
-    path: /tmp/tempo/metrics-generator
-    remote_write:
-      - url: http://prometheus:9090/api/v1/write  # 指向Prometheus
-  processors:
+    path: /tmp/tempo/generator/wal  # 必须存在且可写
+    wal:  # 增加 WAL 配置
+      truncate_frequency: 1h
+  ring:
+    kvstore:
+      store: memberlist  # 必须配置
+  processor:
     service_graphs:
-      enabled: true
-      max_duration: 10s
-      interval: 15s  # 缩短处理间隔
-      dimensions:
-        - http.method
-        - http.status_code
-        - service.name
-    span_metrics:
-      enabled: true
-      dimensions:
-        - service.name
-        - span.kind
-        - status.code
-      latency_histogram_buckets: [10ms, 25ms, 50ms, 75ms, 100ms, 250ms, 500ms, 750ms, 1s, 2.5s, 5s, 10s]
-  registry:
-    external_labels:
-      cluster: dev
-      source: tempo
+      wait: 15s  # 增加等待时间
+      max_items: 20000
+      dimensions: ["http.status_code"]
+      peer_attributes: ["peer.service", "server.address"]  # 添加备用属性
+      # 移除 histogram_buckets（测试期间可选）

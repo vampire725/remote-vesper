@@ -29,7 +29,7 @@ services:
   # ==========================================
   tempo:
     # 使用官方 Grafana Tempo 2.6.0 镜像
-    image: grafana/tempo:2.6.0
+    image: grafana/tempo:2.8.0
 
     # 容器名称
     container_name: tempo
@@ -45,7 +45,7 @@ services:
     # ----------------------------------------
     volumes:
       # 挂载 Tempo 配置文件（只读）
-      - ./tempo-single-node.yaml:/etc/tempo.yaml:ro
+      - ./tempo.yaml:/etc/tempo.yaml:ro
       # 挂载数据存储目录（持久化）
       - tempo-data:/tmp/tempo
       # 挂载时区配置（可选）

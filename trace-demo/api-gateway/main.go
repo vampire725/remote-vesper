@@ -92,6 +92,7 @@ func callBackendService1(ctx context.Context) ([]byte, error) {
 	// 添加HTTP调用属性
 	span.SetAttributes(attribute.String("http.method", "GET"))
 	span.SetAttributes(attribute.String("http.url", "http://localhost:8081/process"))
+	span.SetAttributes(attribute.String("peer.service", "backend-service1"))
 
 	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8081/process", nil)
 	if err != nil {
@@ -128,6 +129,7 @@ func callBackendService2(ctx context.Context) ([]byte, error) {
 	// 添加HTTP调用属性
 	span.SetAttributes(attribute.String("http.method", "GET"))
 	span.SetAttributes(attribute.String("http.url", "http://localhost:8082/process"))
+	span.SetAttributes(attribute.String("peer.service", "backend-service2"))
 
 	req, err := http.NewRequestWithContext(ctx, "GET", "http://localhost:8082/process", nil)
 	if err != nil {

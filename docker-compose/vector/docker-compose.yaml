@@ -15,7 +15,7 @@ services:
       retries: 3
       start_period: 10s
     ports:
-      - "18686:8686"
+      - "8686:8686"
     networks:
       - logging-network
       - kafka
