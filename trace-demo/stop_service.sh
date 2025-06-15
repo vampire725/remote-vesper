@@ -4,22 +4,19 @@
 stop_services() {
     echo "🟠 停止 vector 服务"
 
-    # 停止二进制进程
-    if [ -f backservice1.pid ]; then
-        echo "🟠 停止 backservice1 (PID: $(cat backservice1.pid))"
-        kill -9 $(cat backservice1.pid) && rm backservice1.pid
-    fi
+#    # 停止二进制进程
+#    if [ -f backservice.pid ]; then
+#        echo "🟠 停止 backservice (PID: $(cat backservice.pid))"
+#        kill -9 $(cat backservice.pid) && rm backservice.pid
+#    fi
+#
+#    if [ -f gateway.pid ]; then
+#        echo "🟠 停止 gateway (PID: $(cat gateway.pid))"
+#        kill -9 $(cat gateway.pid) && rm gateway.pid
+#    fi
 
-    # 停止二进制进程
-    if [ -f backservice2.pid ]; then
-        echo "🟠 停止 backservice2 (PID: $(cat backservice2.pid))"
-        kill -9 $(cat backservice2.pid) && rm backservice2.pid
-    fi
-
-    if [ -f gateway.pid ]; then
-        echo "🟠 停止 gateway (PID: $(cat gateway.pid))"
-        kill -9 $(cat gateway.pid) && rm gateway.pid
-    fi
+    pkill -f "gateway" && pkill -f "backservice" || { pgrep -f "gateway" | xargs kill -9 && pgrep -f "backservice" | xargs kill -9; }
+    pkill -f "api/data" || { pgrep -f "api/data" | xargs kill -9; }
 
     # 停止请求脚本
     if [ -f request.pid ]; then
