@@ -10,11 +10,14 @@ networks:
 services:
   # Prometheus - 指标收集和存储
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.4.1
     container_name: prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
+      - --enable-feature=remote-write-receiver
+      - --enable-feature=native-histograms
+      - --enable-feature=exemplar-storage
       - --web.console.libraries=/usr/share/prometheus/console_libraries
       - --web.console.templates=/usr/share/prometheus/consoles
       - --web.enable-lifecycle

@@ -39,6 +39,7 @@ compactor:
 metrics_generator:
   registry: # 指标注册表配置
     external_labels: # 外部标签，添加到所有生成的指标
+      source: tempo
       cluster: docker-compose # 集群标识
   storage: # 指标存储配置
     path: /tmp/tempo/generator/wal # WAL（预写日志）存储路径
@@ -84,9 +85,6 @@ query_frontend:
 # 查询器配置 - 执行实际的查询操作
 querier:
   max_concurrent_queries: 5 # 最大并发查询数
-  search: # 搜索配置
-    external_hedge_requests_at: 8s # 8秒后发起对冲请求
-    external_hedge_requests_up_to: 2 # 最多2个对冲请求
 
 # Memberlist 配置 - 用于节点发现和集群管理
 memberlist:
@@ -97,7 +95,7 @@ memberlist:
 
 # 覆盖配置 - 全局配置覆盖
 overrides:
-  metrics_generator_processors: # 启用的指标生成器处理器
-    - service-graphs # 服务图谱生成器
-    - span-metrics # Span指标生成器
-    - local-blocks # 本地块处理器
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics, local-blocks] # enables metrics generator
+      generate_native_histograms: both

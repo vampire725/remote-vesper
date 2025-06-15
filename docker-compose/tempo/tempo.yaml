@@ -53,16 +53,12 @@ querier:
 # 完整指标生成器配置 (修正版)
 metrics_generator:
   storage:
-    path: /tmp/tempo/generator/wal  # 必须存在且可写
-    wal:  # 增加 WAL 配置
-      truncate_frequency: 1h
-  ring:
-    kvstore:
-      store: memberlist  # 必须配置
+    path: /tmp/tempo/generator/wal
   processor:
     service_graphs:
-      wait: 15s  # 增加等待时间
-      max_items: 20000
+      connection_types: ["http", "grpc"]
+      wait: 10s
+      max_items: 10000
+      histogram_buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
       dimensions: ["http.status_code"]
-      peer_attributes: ["peer.service", "server.address"]  # 添加备用属性
-      # 移除 histogram_buckets（测试期间可选）
+      enable_peer_service: true

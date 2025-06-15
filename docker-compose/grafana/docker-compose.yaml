@@ -11,7 +11,7 @@ networks:
 services:
   # Grafana - 可视化界面
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.0.0
     container_name: grafana
     volumes:
       - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml

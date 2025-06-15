@@ -27,8 +27,17 @@ services:
   # ==========================================
   # Grafana Tempo - 分布式追踪后端
   # ==========================================
+  init:
+    image: grafana/tempo:2.8.0
+    user: root
+    entrypoint:
+      - "chown"
+      - "10001:10001"
+      - "/var/tempo"
+    volumes:
+      - ./tempo-data:/var/tempo
   tempo:
-    # 使用官方 Grafana Tempo 2.6.0 镜像
+    # 使用官方 Grafana Tempo 2.8.0 镜像
     image: grafana/tempo:2.8.0
 
     # 容器名称
@@ -45,12 +54,13 @@ services:
     # ----------------------------------------
     volumes:
       # 挂载 Tempo 配置文件（只读）
-      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - ./tempo-with-metrics.yaml:/etc/tempo.yaml:ro
       # 挂载数据存储目录（持久化）
-      - tempo-data:/tmp/tempo
+      - tempo-data:/var/tempo
       # 挂载时区配置（可选）
       - /etc/localtime:/etc/localtime:ro
-
+    depends_on:
+      - init
     # ----------------------------------------
     # 端口映射
     # ----------------------------------------

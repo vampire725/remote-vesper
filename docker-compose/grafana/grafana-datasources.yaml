@@ -35,7 +35,7 @@ datasources:
           }
       httpMethod: GET
       serviceMap:
-        datasourceUid: prometheus
+        datasourceUid: 'prometheus'
       search:
         hide: false
       nodeGraph:
@@ -58,7 +58,7 @@ datasources:
     version: 1
     editable: true
     apiVersion: 1
-    uid: prometheus
+    uid: 'prometheus'
     jsonData:
       httpMethod: POST
       exemplarTraceIdDestinations:
